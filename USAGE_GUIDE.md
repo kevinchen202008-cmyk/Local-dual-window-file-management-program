@@ -152,7 +152,7 @@ python main.py
 ## 故障排除
 
 ### 程序无法启动
-1. 确保已安装 Python 3.7+
+1. 确保已安装 Python 3.13.9 (推荐) 或 Python 3.10+
 2. 运行 `pip install -r requirements.txt` 安装依赖
 3. 确保 PyQt5 安装正确
 

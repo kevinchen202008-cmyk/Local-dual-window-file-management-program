@@ -3,7 +3,7 @@
 ## 系统要求
 
 - **操作系统**: Windows 7+、Linux 或 macOS
-- **Python版本**: Python 3.7 或更高版本
+- **Python版本**: Python 3.13.9 (推荐) 或 Python 3.10+
 - **内存**: 至少 512MB RAM
 - **磁盘空间**: 至少 100MB
 
