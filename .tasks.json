@@ -1,0 +1,92 @@
+{
+  "1": {
+    "id": 1,
+    "name": "UI modern design",
+    "description": "实现扁平设计和现代UI",
+    "priority": "high",
+    "version": "v1.1.0",
+    "status": "todo",
+    "created": "2026-01-11T15:31:09.038909",
+    "completed": null
+  },
+  "2": {
+    "id": 2,
+    "name": "Light/Dark theme",
+    "description": "添加亮色和暗色主题支持",
+    "priority": "high",
+    "version": "v1.1.0",
+    "status": "todo",
+    "created": "2026-01-11T15:31:09.039275",
+    "completed": null
+  },
+  "3": {
+    "id": 3,
+    "name": "Icon improvements",
+    "description": "改进和替换图标集",
+    "priority": "medium",
+    "version": "v1.1.0",
+    "status": "todo",
+    "created": "2026-01-11T15:31:09.039611",
+    "completed": null
+  },
+  "4": {
+    "id": 4,
+    "name": "Virtual scrolling",
+    "description": "为大型目录实现虚拟滚动",
+    "priority": "high",
+    "version": "v1.2.0",
+    "status": "todo",
+    "created": "2026-01-11T15:31:09.040024",
+    "completed": null
+  },
+  "5": {
+    "id": 5,
+    "name": "Search optimization",
+    "description": "优化搜索算法和索引",
+    "priority": "high",
+    "version": "v1.2.0",
+    "status": "todo",
+    "created": "2026-01-11T15:31:09.040372",
+    "completed": null
+  },
+  "6": {
+    "id": 6,
+    "name": "Keyboard shortcuts",
+    "description": "实现全面的键盘快捷键支持",
+    "priority": "medium",
+    "version": "v1.2.0",
+    "status": "todo",
+    "created": "2026-01-11T15:31:09.040740",
+    "completed": null
+  },
+  "7": {
+    "id": 7,
+    "name": "Network support",
+    "description": "添加网络文件浏览支持",
+    "priority": "high",
+    "version": "v2.0.0",
+    "status": "todo",
+    "created": "2026-01-11T15:31:09.041094",
+    "completed": null
+  },
+  "8": {
+    "id": 8,
+    "name": "Advanced search",
+    "description": "实现高级搜索过滤器",
+    "priority": "medium",
+    "version": "v2.0.0",
+    "status": "todo",
+    "created": "2026-01-11T15:31:09.041527",
+    "completed": null
+  },
+  "9": {
+    "id": 9,
+    "name": "Plugin system",
+    "description": "添加插件系统支持",
+    "priority": "medium",
+    "version": "v2.0.0",
+    "status": "todo",
+    "created": "2026-01-11T15:31:09.041977",
+    "completed": null
+  }
+}

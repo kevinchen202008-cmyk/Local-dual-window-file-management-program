@@ -1,0 +1,40 @@
+# Git 提交消息模板
+
+## 提交类型 (Type)
+# feat:     新功能
+# fix:      bug修复
+# docs:     文档更新
+# style:    代码格式（不影响功能）
+# refactor: 代码重构
+# perf:     性能优化
+# test:     测试相关
+# chore:    构建、工具相关
+
+## 作用域 (Scope)
+# ui:       用户界面
+# core:     核心功能
+# file:     文件操作
+# search:   搜索功能
+# config:   配置管理
+# perf:     性能相关
+# docs:     文档相关
+
+## 格式示例:
+# feat(ui): add file preview feature
+# fix(search): resolve slow search performance  
+# docs(guide): update user guide
+
+## 提交信息应遵循:
+# - 使用英文
+# - 简洁明了
+# - 第一行不超过50字符
+# - 说明具体改变内容
+
+## 示例:
+# feat(ui): implement dark theme support
+#
+# - Add toggle button in settings
+# - Save preference to config
+# - Apply theme on startup
+#
+# Closes #123
