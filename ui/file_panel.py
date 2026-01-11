@@ -25,6 +25,7 @@ class FilePanel(QWidget):
             self.current_path = str(Path.home())
         
         self.selected_files = []
+        self.setFocusPolicy(Qt.StrongFocus)  # 允许获得焦点
         
         # 创建布局
         layout = QVBoxLayout()

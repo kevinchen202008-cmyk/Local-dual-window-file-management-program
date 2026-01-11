@@ -20,6 +20,9 @@ class MainWindow(QMainWindow):
         # 加载配置
         self.config = ConfigManager()
         
+        # 追踪焦点面板
+        self.focused_panel = None
+        
         self.setWindowTitle("文件管理器 - File Manager")
         
         # 恢复窗口大小和位置
@@ -46,12 +49,21 @@ class MainWindow(QMainWindow):
         # 左面板
         left_path = self.config.get('left_panel_path', None)
         self.left_panel = FilePanel("left", initial_path=left_path)
+        # 添加焦点事件处理
+        self.left_panel.file_list.focusInEvent = lambda e: self._on_panel_focus(self.left_panel, e)
+        self.left_panel.path_input.focusInEvent = lambda e: self._on_panel_focus(self.left_panel, e)
         panels_layout.addWidget(self.left_panel)
         
         # 右面板
         right_path = self.config.get('right_panel_path', None)
         self.right_panel = FilePanel("right", initial_path=right_path)
+        # 添加焦点事件处理
+        self.right_panel.file_list.focusInEvent = lambda e: self._on_panel_focus(self.right_panel, e)
+        self.right_panel.path_input.focusInEvent = lambda e: self._on_panel_focus(self.right_panel, e)
         panels_layout.addWidget(self.right_panel)
+        
+        # 默认焦点在左面板
+        self.focused_panel = self.left_panel
         
         main_layout.addLayout(panels_layout)
         
@@ -123,6 +135,20 @@ class MainWindow(QMainWindow):
         # Del - 删除
         QShortcut(QKeySequence("Delete"), self, self.delete_files)
     
+    def _on_panel_focus(self, panel, event):
+        """面板获得焦点时的处理"""
+        self.focused_panel = panel
+        self.update_panel_highlight()
+    
+    def update_panel_highlight(self):
+        """更新焦点面板的高亮显示 - FreeCommander 风格"""
+        if self.focused_panel == self.left_panel:
+            self.left_panel.setStyleSheet("border: 2px solid #0078d4;")
+            self.right_panel.setStyleSheet("")
+        else:
+            self.right_panel.setStyleSheet("border: 2px solid #0078d4;")
+            self.left_panel.setStyleSheet("")
+    
     def go_up(self):
         """返回上级目录"""
         focused = self.get_focused_panel()
@@ -165,6 +191,10 @@ class MainWindow(QMainWindow):
         if focused:
             focused.delete_files()
     
+    def get_focused_panel(self):
+        """获取当前焦点面板 - 使用追踪的焦点而不是实时检查"""
+        return self.focused_panel if self.focused_panel else self.left_panel
+    
     def closeEvent(self, event):
         """窗口关闭事件 - 保存配置"""
         # 保存窗口位置和大小
@@ -177,9 +207,3 @@ class MainWindow(QMainWindow):
             'right_panel_path': self.right_panel.current_path
         })
         event.accept()
-        """获取当前焦点面板"""
-        if self.left_panel.hasFocus() or self.left_panel.file_list.hasFocus():
-            return self.left_panel
-        elif self.right_panel.hasFocus() or self.right_panel.file_list.hasFocus():
-            return self.right_panel
-        return self.left_panel  # 默认返回左面板
