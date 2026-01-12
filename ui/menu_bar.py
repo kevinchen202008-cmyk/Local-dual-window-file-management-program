@@ -63,6 +63,12 @@ def create_menu_bar(main_window):
     search_action.setShortcut("Ctrl+F")
     search_action.triggered.connect(lambda: on_search(main_window))
     
+    compare_action = tools_menu.addAction("对比文件")
+    compare_action.setShortcut("Ctrl+Shift+C")
+    compare_action.triggered.connect(lambda: on_compare_files(main_window))
+    
+    tools_menu.addSeparator()
+    
     settings_action = tools_menu.addAction("设置")
     settings_action.triggered.connect(lambda: on_settings(main_window))
     
@@ -91,6 +97,85 @@ def on_search(main_window):
     
     search_dialog = SearchDialog(main_window, root_path)
     search_dialog.exec_()
+
+
+def on_compare_files(main_window):
+    """对比文件"""
+    from .compare_dialog import CompareDialog
+    from .file_compare import find_same_named_files
+    
+    # 获取两个面板的选中文件
+    left_selected = main_window.left_panel.get_selected_files()
+    right_selected = main_window.right_panel.get_selected_files()
+    
+    # 如果只选中了一个文件，尝试查找同名文件
+    if len(left_selected) == 1 and len(right_selected) == 0:
+        file1_path = left_selected[0]
+        file1_name = file1_path.split('\\')[-1]
+        
+        # 在右面板目录中查找同名文件
+        right_dir = main_window.right_panel.current_path
+        file2_path = f"{right_dir}\\{file1_name}"
+        
+        import os
+        if os.path.exists(file2_path):
+            compare_dialog = CompareDialog(file1_path, file2_path, main_window)
+            compare_dialog.exec_()
+        else:
+            QMessageBox.warning(main_window, "提示", f"在右面板目录中未找到同名文件: {file1_name}")
+    
+    elif len(right_selected) == 1 and len(left_selected) == 0:
+        file2_path = right_selected[0]
+        file2_name = file2_path.split('\\')[-1]
+        
+        # 在左面板目录中查找同名文件
+        left_dir = main_window.left_panel.current_path
+        file1_path = f"{left_dir}\\{file2_name}"
+        
+        import os
+        if os.path.exists(file1_path):
+            compare_dialog = CompareDialog(file1_path, file2_path, main_window)
+            compare_dialog.exec_()
+        else:
+            QMessageBox.warning(main_window, "提示", f"在左面板目录中未找到同名文件: {file2_name}")
+    
+    elif len(left_selected) == 1 and len(right_selected) == 1:
+        # 对比两个选中的文件
+        file1_path = left_selected[0]
+        file2_path = right_selected[0]
+        
+        compare_dialog = CompareDialog(file1_path, file2_path, main_window)
+        compare_dialog.exec_()
+    
+    else:
+        # 尝试找出左右两个目录中的同名文件
+        left_dir = main_window.left_panel.current_path
+        right_dir = main_window.right_panel.current_path
+        
+        same_files = find_same_named_files(left_dir, right_dir)
+        
+        if same_files:
+            # 对比第一个同名文件
+            QMessageBox.information(
+                main_window, 
+                "文件对比",
+                f"在左右两个目录中找到 {len(same_files)} 个同名文件\n\n"
+                f"现在对比: {same_files[0]['name']}"
+            )
+            compare_dialog = CompareDialog(same_files[0]['path1'], same_files[0]['path2'], main_window)
+            compare_dialog.exec_()
+        else:
+            QMessageBox.information(
+                main_window, 
+                "文件对比",
+                "使用方法:\n\n"
+                "1. 在一个面板中选中要对比的文件\n"
+                "   程序会自动在另一个面板中查找同名文件\n\n"
+                "2. 或在两个面板中各选中一个文件\n"
+                "   点击菜单对比这两个文件\n\n"
+                "3. 或两个面板的目录中有同名文件\n"
+                "   会自动找到并对比"
+            )
 
 
 def on_settings(main_window):

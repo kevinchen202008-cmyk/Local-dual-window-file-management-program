@@ -318,6 +318,16 @@ class FilePanel(QWidget):
                 selected.append((name, os.path.join(self.current_path, name)))
         return selected
     
+    def get_selected_files(self):
+        """获取选中文件的完整路径列表"""
+        files = []
+        for index in self.file_list.selectedIndexes():
+            row = index.row()
+            name = self.file_list.item(row, 0).text()
+            if name != '..' and os.path.isfile(os.path.join(self.current_path, name)):
+                files.append(os.path.join(self.current_path, name))
+        return files
+    
     def copy_to(self, dest_path):
         """复制文件到目标路径"""
         selected = self.get_selected_items()
