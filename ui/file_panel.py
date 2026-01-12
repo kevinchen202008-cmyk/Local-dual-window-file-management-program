@@ -29,16 +29,45 @@ class FilePanel(QWidget):
         
         # 创建布局
         layout = QVBoxLayout()
+        layout.setSpacing(8)
         
         # 路径输入框
         path_layout = QHBoxLayout()
         self.path_input = QLineEdit()
         self.path_input.setText(self.current_path)
         self.path_input.returnPressed.connect(self.on_path_changed)
+        # 设置路径框的初始样式
+        self.path_input.setStyleSheet("""
+            QLineEdit {
+                background-color: #FFFFFF;
+                border: 1px solid #D0D0D0;
+                border-radius: 3px;
+                padding: 4px;
+                font-size: 10pt;
+            }
+            QLineEdit:focus {
+                border: 1px solid #ADD8E6;
+                background-color: #FFFFFF;
+            }
+        """)
         path_layout.addWidget(self.path_input)
         
         browse_btn = QPushButton("浏览...")
         browse_btn.clicked.connect(self.browse_folder)
+        browse_btn.setStyleSheet("""
+            QPushButton {
+                padding: 4px 12px;
+                border-radius: 3px;
+                border: 1px solid #D0D0D0;
+                background-color: #F5F5F5;
+            }
+            QPushButton:hover {
+                background-color: #EFEFEF;
+            }
+            QPushButton:pressed {
+                background-color: #E8E8E8;
+            }
+        """)
         path_layout.addWidget(browse_btn)
         
         layout.addLayout(path_layout)
@@ -53,6 +82,30 @@ class FilePanel(QWidget):
         self.file_list.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
         self.file_list.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
         
+        # 设置文件列表的初始样式
+        self.file_list.setStyleSheet("""
+            QTableWidget {
+                background-color: #FFFFFF;
+                border: 1px solid #D0D0D0;
+                border-radius: 3px;
+                gridline-color: #E8E8E8;
+            }
+            QTableWidget::item {
+                padding: 2px 4px;
+            }
+            QTableWidget::item:selected {
+                background-color: #0078d4;
+                color: white;
+            }
+            QHeaderView::section {
+                background-color: #F5F5F5;
+                padding: 4px;
+                border: none;
+                border-right: 1px solid #E0E0E0;
+                border-bottom: 1px solid #E0E0E0;
+            }
+        """)
+        
         self.file_list.setSelectionBehavior(QTableWidget.SelectRows)
         self.file_list.setSelectionMode(QTableWidget.ExtendedSelection)
         self.file_list.itemDoubleClicked.connect(self.on_item_double_clicked)
@@ -66,6 +119,17 @@ class FilePanel(QWidget):
         status_layout = QHBoxLayout()
         self.status_label = QLineEdit()
         self.status_label.setReadOnly(True)
+        # 设置状态栏的样式
+        self.status_label.setStyleSheet("""
+            QLineEdit {
+                background-color: #F5F5F5;
+                border: 1px solid #D0D0D0;
+                border-radius: 3px;
+                padding: 4px;
+                font-size: 9pt;
+                color: #666666;
+            }
+        """)
         status_layout.addWidget(self.status_label)
         layout.addLayout(status_layout)
         

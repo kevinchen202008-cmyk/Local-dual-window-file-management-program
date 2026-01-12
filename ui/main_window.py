@@ -141,13 +141,53 @@ class MainWindow(QMainWindow):
         self.update_panel_highlight()
     
     def update_panel_highlight(self):
-        """更新焦点面板的高亮显示 - FreeCommander 风格"""
+        """更新焦点面板的高亮显示 - 现代浅色背景风格"""
+        # 焦点面板：浅蓝色背景 + 微妙边框
+        focused_style = """
+            QWidget {
+                background-color: #E8F4F8;
+                border-radius: 4px;
+            }
+            QLineEdit {
+                background-color: #FFFFFF;
+                border: 1px solid #ADD8E6;
+                border-radius: 3px;
+                padding: 2px;
+            }
+            QTableWidget {
+                background-color: #F5FAFB;
+                border: 1px solid #ADD8E6;
+                border-radius: 3px;
+            }
+            QTableWidget::item:selected {
+                background-color: #0078d4;
+            }
+        """
+        
+        # 非焦点面板：正常样式
+        unfocused_style = """
+            QWidget {
+                background-color: #FFFFFF;
+            }
+            QLineEdit {
+                background-color: #FFFFFF;
+                border: 1px solid #D0D0D0;
+                border-radius: 3px;
+                padding: 2px;
+            }
+            QTableWidget {
+                background-color: #FFFFFF;
+                border: 1px solid #D0D0D0;
+                border-radius: 3px;
+            }
+        """
+        
         if self.focused_panel == self.left_panel:
-            self.left_panel.setStyleSheet("border: 2px solid #0078d4;")
-            self.right_panel.setStyleSheet("")
+            self.left_panel.setStyleSheet(focused_style)
+            self.right_panel.setStyleSheet(unfocused_style)
         else:
-            self.right_panel.setStyleSheet("border: 2px solid #0078d4;")
-            self.left_panel.setStyleSheet("")
+            self.right_panel.setStyleSheet(focused_style)
+            self.left_panel.setStyleSheet(unfocused_style)
     
     def go_up(self):
         """返回上级目录"""
