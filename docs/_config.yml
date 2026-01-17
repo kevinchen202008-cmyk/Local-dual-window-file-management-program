@@ -1,0 +1,17 @@
+title: 双窗口文件管理程序 - 开发日志
+description: 项目开发过程记录与技术分享
+baseurl: "/Local-dual-window-file-management-program"
+url: "https://kevinchen202008-cmyk.github.io"
+
+theme: jekyll-theme-cayman  # 或其他主题
+
+# 导航
+navigation:
+  - title: 首页
+    url: /
+  - title: 开发日志
+    url: /blog/
+  - title: 项目文档
+    url: /docs/
+  - title: GitHub
+    url: https://github.com/kevinchen202008-cmyk/Local-dual-window-file-management-program
