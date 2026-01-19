@@ -64,3 +64,9 @@ Thumbs.db
 *.bak
 *.backup
 *~
+
+# Development artifacts
+技术架构分析-*
+*.json
+!package.json
+!package-lock.json
