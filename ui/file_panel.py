@@ -4,21 +4,28 @@
 
 import os
 import shutil
+import fnmatch
+import re
 from pathlib import Path
 from datetime import datetime
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QTableWidget, 
-    QTableWidgetItem, QMessageBox, QFileDialog, QHeaderView, QMenu, QPushButton
+    QTableWidgetItem, QMessageBox, QFileDialog, QHeaderView, QMenu, QPushButton,
+    QTreeView, QSplitter
 )
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtCore import Qt, QSize, QDir
 from PyQt5.QtGui import QIcon, QFont
+from PyQt5.QtWidgets import QFileSystemModel
 
 
 class FilePanel(QWidget):
-    def __init__(self, panel_name="", initial_path=None):
+    def __init__(self, panel_name="", initial_path=None, show_tree=False, filter_mode="wildcard"):
         super().__init__()
         self.panel_name = panel_name
         self.current_path = initial_path or str(Path.home())
+        self.filter_mode = filter_mode  # wildcard or regex
+        self.filter_pattern = ""
+        self.show_tree_flag = show_tree
         
         # 验证初始路径
         if not os.path.isdir(self.current_path):
@@ -27,7 +34,7 @@ class FilePanel(QWidget):
         self.sePlected_files = []
         self.setFocusPolicy(Qt.StrongFocus)  # 允许获得焦点
         
-        # 创建布局
+        # 主布局
         layout = QVBoxLayout()
         layout.setSpacing(8)
         
@@ -36,7 +43,6 @@ class FilePanel(QWidget):
         self.path_input = QLineEdit()
         self.path_input.setText(self.current_path)
         self.path_input.returnPressed.connect(self.on_path_changed)
-        # 设置路径框的初始样式
         self.path_input.setStyleSheet("""
             QLineEdit {
                 background-color: #FFFFFF;
@@ -69,8 +75,45 @@ class FilePanel(QWidget):
             }
         """)
         path_layout.addWidget(browse_btn)
-        
         layout.addLayout(path_layout)
+        
+        # 过滤输入框
+        filter_layout = QHBoxLayout()
+        self.filter_input = QLineEdit()
+        self.filter_input.setPlaceholderText("过滤（支持通配符，例：*.txt；正则请切换模式）")
+        self.filter_input.returnPressed.connect(self.apply_filter)
+        filter_layout.addWidget(self.filter_input)
+        
+        clear_filter_btn = QPushButton("清除过滤")
+        clear_filter_btn.clicked.connect(self.clear_filter)
+        clear_filter_btn.setStyleSheet("""
+            QPushButton {
+                padding: 4px 10px;
+                border-radius: 3px;
+                border: 1px solid #D0D0D0;
+                background-color: #F5F5F5;
+            }
+            QPushButton:hover { background-color: #EFEFEF; }
+            QPushButton:pressed { background-color: #E8E8E8; }
+        """)
+        filter_layout.addWidget(clear_filter_btn)
+        layout.addLayout(filter_layout)
+        
+        # 分割器：目录树 + 文件列表
+        splitter = QSplitter()
+        splitter.setOrientation(Qt.Horizontal)
+        
+        # 目录树
+        self.dir_model = QFileSystemModel()
+        self.dir_model.setFilter(QDir.NoDotAndDotDot | QDir.AllDirs)
+        self.dir_model.setRootPath(QDir.rootPath())
+        
+        self.dir_tree = QTreeView()
+        self.dir_tree.setModel(self.dir_model)
+        self.dir_tree.setRootIndex(self.dir_model.index(self.current_path))
+        self.dir_tree.clicked.connect(self.on_tree_clicked)
+        self.dir_tree.setHeaderHidden(True)
+        self.dir_tree.setVisible(self.show_tree_flag)
         
         # 文件列表表格
         self.file_list = QTableWidget()
@@ -82,7 +125,6 @@ class FilePanel(QWidget):
         self.file_list.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
         self.file_list.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
         
-        # 设置文件列表的初始样式
         self.file_list.setStyleSheet("""
             QTableWidget {
                 background-color: #FFFFFF;
@@ -113,13 +155,16 @@ class FilePanel(QWidget):
         self.file_list.customContextMenuRequested.connect(self.show_context_menu)
         self.file_list.selectionModel().selectionChanged.connect(self.update_status)
         
-        layout.addWidget(self.file_list)
+        splitter.addWidget(self.dir_tree)
+        splitter.addWidget(self.file_list)
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+        layout.addWidget(splitter)
         
         # 状态栏
         status_layout = QHBoxLayout()
         self.status_label = QLineEdit()
         self.status_label.setReadOnly(True)
-        # 设置状态栏的样式
         self.status_label.setStyleSheet("""
             QLineEdit {
                 background-color: #F5F5F5;
@@ -192,8 +237,14 @@ class FilePanel(QWidget):
             # 排序：目录优先，然后按名称排序
             items.sort(key=lambda x: (not x['is_dir'], x['name'].lower()))
             
-            # 填充表格
+            # 过滤
+            filtered_items = []
             for item in items:
+                if self._match_filter(item['name']):
+                    filtered_items.append(item)
+            
+            # 填充表格
+            for item in filtered_items:
                 row = self.file_list.rowCount()
                 self.file_list.insertRow(row)
                 
@@ -292,6 +343,11 @@ class FilePanel(QWidget):
         path = os.path.abspath(path)
         if os.path.isdir(path):
             self.current_path = path
+            if self.show_tree_flag:
+                try:
+                    self.dir_tree.setRootIndex(self.dir_model.index(self.current_path))
+                except Exception:
+                    pass
             self.refresh()
         else:
             QMessageBox.warning(self, "错误", "路径无效")
@@ -327,6 +383,46 @@ class FilePanel(QWidget):
             if name != '..' and os.path.isfile(os.path.join(self.current_path, name)):
                 files.append(os.path.join(self.current_path, name))
         return files
+    
+    def _match_filter(self, name):
+        """根据当前过滤规则匹配名称"""
+        if name == '..' or not self.filter_pattern:
+            return True
+        pattern = self.filter_pattern
+        if self.filter_mode == 'regex':
+            try:
+                return re.search(pattern, name, re.IGNORECASE) is not None
+            except re.error:
+                return True  # 正则错误时不阻断显示
+        return fnmatch.fnmatch(name.lower(), pattern.lower())
+    
+    def apply_filter(self):
+        """应用过滤"""
+        self.filter_pattern = self.filter_input.text().strip()
+        self.refresh()
+    
+    def clear_filter(self):
+        """清除过滤"""
+        self.filter_pattern = ""
+        self.filter_input.clear()
+        self.refresh()
+    
+    def on_tree_clicked(self, index):
+        """目录树点击"""
+        path = self.dir_model.filePath(index)
+        if os.path.isdir(path):
+            self.change_path(path)
+    
+    def set_show_tree(self, show: bool):
+        """显示/隐藏目录树"""
+        self.show_tree_flag = show
+        self.dir_tree.setVisible(show)
+    
+    def set_filter_mode(self, mode: str):
+        """设置过滤模式"""
+        if mode in ("wildcard", "regex"):
+            self.filter_mode = mode
+            self.refresh()
     
     def copy_to(self, dest_path):
         """复制文件到目标路径"""

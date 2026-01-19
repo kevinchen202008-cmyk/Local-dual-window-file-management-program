@@ -16,6 +16,12 @@ class ConfigManager:
         self.default_config = {
             'left_panel_path': str(Path.home()),
             'right_panel_path': str(Path.home()),
+            'left_tabs': [],
+            'right_tabs': [],
+            'left_active_tab': 0,
+            'right_active_tab': 0,
+            'show_tree': False,
+            'filter_mode': 'wildcard',  # wildcard, regex
             'window_width': 1400,
             'window_height': 800,
             'window_x': 100,

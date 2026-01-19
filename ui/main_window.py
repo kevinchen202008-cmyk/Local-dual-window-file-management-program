@@ -2,9 +2,12 @@
 主窗口类 - 双面板布局
 """
 
+import os
+from pathlib import Path
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, 
-    QMenuBar, QToolBar, QPushButton, QMessageBox, QShortcut, QMenu
+    QMenuBar, QToolBar, QPushButton, QMessageBox, QShortcut, QMenu,
+    QTabWidget
 )
 from PyQt5.QtCore import Qt, QSize, QPoint, QRect, QEvent
 from PyQt5.QtGui import QIcon, QMouseEvent, QColor
@@ -286,23 +289,17 @@ class MainWindow(QMainWindow):
         # 创建文件面板容器
         panels_layout = QHBoxLayout()
         
-        # 左面板
-        left_path = self.config.get('left_panel_path', None)
-        self.left_panel = FilePanel("left", initial_path=left_path)
-        # 添加焦点事件处理
-        self.left_panel.file_list.focusInEvent = lambda e: self._on_panel_focus(self.left_panel, e)
-        self.left_panel.path_input.focusInEvent = lambda e: self._on_panel_focus(self.left_panel, e)
-        panels_layout.addWidget(self.left_panel)
+        # 左侧标签容器
+        self.left_tabs = self._create_tab_widget("left")
+        panels_layout.addWidget(self.left_tabs)
         
-        # 右面板
-        right_path = self.config.get('right_panel_path', None)
-        self.right_panel = FilePanel("right", initial_path=right_path)
-        # 添加焦点事件处理
-        self.right_panel.file_list.focusInEvent = lambda e: self._on_panel_focus(self.right_panel, e)
-        self.right_panel.path_input.focusInEvent = lambda e: self._on_panel_focus(self.right_panel, e)
-        panels_layout.addWidget(self.right_panel)
+        # 右侧标签容器
+        self.right_tabs = self._create_tab_widget("right")
+        panels_layout.addWidget(self.right_tabs)
         
         # 默认焦点在左面板
+        self.left_panel = self._current_panel("left")
+        self.right_panel = self._current_panel("right")
         self.focused_panel = self.left_panel
         
         main_layout.addLayout(panels_layout)
@@ -370,11 +367,148 @@ class MainWindow(QMainWindow):
         
         # Del - 删除
         QShortcut(QKeySequence("Delete"), self, self.delete_files)
+        
+        # 标签快捷键
+        QShortcut(QKeySequence("Ctrl+T"), self, self.new_tab)
+        QShortcut(QKeySequence("Ctrl+W"), self, self.close_tab)
+        QShortcut(QKeySequence("Ctrl+Tab"), self, lambda: self.switch_tab(1))
+        QShortcut(QKeySequence("Ctrl+Shift+Tab"), self, lambda: self.switch_tab(-1))
+        
+        # 目录树显示/隐藏
+        QShortcut(QKeySequence("Alt+D"), self, self.toggle_tree)
+        
+        # 清除过滤
+        QShortcut(QKeySequence("Ctrl+L"), self, self.clear_filter)
     
     def _on_panel_focus(self, panel, event):
         """面板获得焦点时的处理"""
         self.focused_panel = panel
         self.update_panel_highlight()
+
+    def _create_tab_widget(self, side: str):
+        """创建带默认标签的Tab容器"""
+        tabs = QTabWidget()
+        tabs.setTabsClosable(True)
+        tabs.tabCloseRequested.connect(lambda idx, s=side: self._close_tab(s, idx))
+        tabs.currentChanged.connect(lambda idx, s=side: self._on_tab_changed(s, idx))
+        
+        stored_paths = self.config.get(f"{side}_tabs", [])
+        if not stored_paths:
+            stored_paths = [self.config.get(f"{side}_panel_path", None)]
+        if not stored_paths:
+            stored_paths = [str(Path.home())]
+        
+        for p in stored_paths:
+            self._add_tab(side, p, tabs)
+        
+        active = self.config.get(f"{side}_active_tab", 0)
+        if active < tabs.count():
+            tabs.setCurrentIndex(active)
+        
+        return tabs
+    
+    def _add_tab(self, side: str, path: str = None, tabs: QTabWidget = None):
+        """创建并添加一个新标签"""
+        if tabs is None:
+            tabs = self.left_tabs if side == "left" else self.right_tabs
+        panel = FilePanel(
+            panel_name=side,
+            initial_path=path,
+            show_tree=self.config.get('show_tree', False),
+            filter_mode=self.config.get('filter_mode', 'wildcard')
+        )
+        self._register_panel_focus(panel)
+        tab_title = os.path.basename(panel.current_path) or panel.current_path
+        tabs.addTab(panel, tab_title)
+        tabs.setCurrentWidget(panel)
+        if side == "left":
+            self.left_panel = panel
+        else:
+            self.right_panel = panel
+        self.focused_panel = panel
+        self.update_panel_highlight()
+        return panel
+    
+    def _register_panel_focus(self, panel: FilePanel):
+        """给面板控件绑定焦点事件以追踪当前面板"""
+        panel.file_list.focusInEvent = lambda e, p=panel: self._on_panel_focus(p, e)
+        panel.path_input.focusInEvent = lambda e, p=panel: self._on_panel_focus(p, e)
+        if hasattr(panel, "filter_input"):
+            panel.filter_input.focusInEvent = lambda e, p=panel: self._on_panel_focus(p, e)
+    
+    def _current_panel(self, side: str):
+        """获取指定侧的当前面板"""
+        tabs = self.left_tabs if side == "left" else self.right_tabs
+        return tabs.currentWidget()
+    
+    def _on_tab_changed(self, side: str, index: int):
+        """标签切换时更新焦点与高亮"""
+        panel = self._current_panel(side)
+        if panel:
+            if side == "left":
+                self.left_panel = panel
+            else:
+                self.right_panel = panel
+            self.focused_panel = panel
+            tab_title = os.path.basename(panel.current_path) or panel.current_path
+            tabs = self.left_tabs if side == "left" else self.right_tabs
+            if index >= 0:
+                tabs.setTabText(index, tab_title)
+        self.update_panel_highlight()
+    
+    def new_tab(self):
+        """在当前侧新建标签"""
+        focused = self.get_focused_panel()
+        side = focused.panel_name if hasattr(focused, "panel_name") else "left"
+        base_path = focused.current_path if focused else str(Path.home())
+        self._add_tab(side, base_path)
+    
+    def close_tab(self):
+        """关闭当前标签，保留至少一个"""
+        focused = self.get_focused_panel()
+        side = focused.panel_name if hasattr(focused, "panel_name") else "left"
+        tabs = self.left_tabs if side == "left" else self.right_tabs
+        if tabs.count() <= 1:
+            QMessageBox.information(self, "提示", "至少保留一个标签")
+            return
+        idx = tabs.currentIndex()
+        tabs.removeTab(idx)
+        self.focused_panel = self._current_panel(side)
+        self.update_panel_highlight()
+    
+    def _close_tab(self, side: str, idx: int):
+        tabs = self.left_tabs if side == "left" else self.right_tabs
+        if tabs.count() <= 1:
+            QMessageBox.information(self, "提示", "至少保留一个标签")
+            return
+        tabs.removeTab(idx)
+        self.focused_panel = self._current_panel(side)
+        self.update_panel_highlight()
+    
+    def switch_tab(self, delta: int):
+        """切换标签"""
+        focused = self.get_focused_panel()
+        side = focused.panel_name if hasattr(focused, "panel_name") else "left"
+        tabs = self.left_tabs if side == "left" else self.right_tabs
+        if tabs.count() <= 1:
+            return
+        idx = tabs.currentIndex()
+        new_idx = (idx + delta) % tabs.count()
+        tabs.setCurrentIndex(new_idx)
+    
+    def toggle_tree(self):
+        """显示/隐藏目录树（当前面板）"""
+        panel = self.get_focused_panel()
+        if panel:
+            panel.set_show_tree(not panel.show_tree_flag)
+            self.config.set('show_tree', panel.show_tree_flag)
+            self.update_panel_highlight()
+    
+    def clear_filter(self):
+        """清除当前面板过滤"""
+        panel = self.get_focused_panel()
+        if panel:
+            panel.clear_filter()
     
     def update_panel_highlight(self):
         """更新焦点面板的高亮显示 - 现代浅色背景风格"""
@@ -418,12 +552,13 @@ class MainWindow(QMainWindow):
             }
         """
         
-        if self.focused_panel == self.left_panel:
-            self.left_panel.setStyleSheet(focused_style)
-            self.right_panel.setStyleSheet(unfocused_style)
-        else:
-            self.right_panel.setStyleSheet(focused_style)
-            self.left_panel.setStyleSheet(unfocused_style)
+        if self.focused_panel and self.left_panel and self.right_panel:
+            if self.focused_panel == self.left_panel:
+                self.left_panel.setStyleSheet(focused_style)
+                self.right_panel.setStyleSheet(unfocused_style)
+            else:
+                self.right_panel.setStyleSheet(focused_style)
+                self.left_panel.setStyleSheet(unfocused_style)
     
     def go_up(self):
         """返回上级目录"""
@@ -433,8 +568,10 @@ class MainWindow(QMainWindow):
     
     def refresh_panels(self):
         """刷新两个面板"""
-        self.left_panel.refresh()
-        self.right_panel.refresh()
+        if self.left_panel:
+            self.left_panel.refresh()
+        if self.right_panel:
+            self.right_panel.refresh()
     
     def sync_paths(self):
         """同步两个面板的路径"""
@@ -483,13 +620,20 @@ class MainWindow(QMainWindow):
     
     def closeEvent(self, event):
         """窗口关闭事件 - 保存配置"""
-        # 保存窗口位置和大小
+        # 保存窗口位置和大小 + 标签状态
+        left_paths = [self.left_tabs.widget(i).current_path for i in range(self.left_tabs.count())]
+        right_paths = [self.right_tabs.widget(i).current_path for i in range(self.right_tabs.count())]
         self.config.update({
             'window_width': self.width(),
             'window_height': self.height(),
             'window_x': self.x(),
             'window_y': self.y(),
-            'left_panel_path': self.left_panel.current_path,
-            'right_panel_path': self.right_panel.current_path
+            'left_panel_path': self.left_panel.current_path if self.left_panel else str(Path.home()),
+            'right_panel_path': self.right_panel.current_path if self.right_panel else str(Path.home()),
+            'left_tabs': left_paths,
+            'right_tabs': right_paths,
+            'left_active_tab': self.left_tabs.currentIndex(),
+            'right_active_tab': self.right_tabs.currentIndex(),
+            'show_tree': self.left_panel.show_tree_flag if self.left_panel else False,
         })
         event.accept()
