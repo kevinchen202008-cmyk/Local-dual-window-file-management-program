@@ -19,17 +19,27 @@ from PyQt5.QtWidgets import QFileSystemModel
 
 
 class FilePanel(QWidget):
-    def __init__(self, panel_name="", initial_path=None, show_tree=False, filter_mode="wildcard"):
+    def __init__(self, panel_name="", initial_path=None, show_tree=False, filter_mode="wildcard", on_path_changed_callback=None):
         super().__init__()
         self.panel_name = panel_name
         self.current_path = initial_path or str(Path.home())
         self.filter_mode = filter_mode  # wildcard or regex
         self.filter_pattern = ""
         self.show_tree_flag = show_tree
+        self.on_path_changed_callback = on_path_changed_callback  # 路径改变时的回调函数
         
         # 验证初始路径
         if not os.path.isdir(self.current_path):
             self.current_path = str(Path.home())
+        
+        # 初始化历史记录管理器
+        from .history_manager import HistoryManager
+        self.history = HistoryManager()
+        self.history.navigate_to(self.current_path)
+
+        # 排序配置（默认按名称升序）
+        self.sort_by = 'name'   # name, size, date, type
+        self.sort_order = 'asc' # asc, desc
         
         self.sePlected_files = []
         self.setFocusPolicy(Qt.StrongFocus)  # 允许获得焦点
@@ -234,8 +244,8 @@ class FilePanel(QWidget):
                 except (OSError, IOError):
                     continue
             
-            # 排序：目录优先，然后按名称排序
-            items.sort(key=lambda x: (not x['is_dir'], x['name'].lower()))
+            # 排序：目录优先，然后按配置的排序方式排序
+            items = self._sort_items(items)
             
             # 过滤
             filtered_items = []
@@ -269,9 +279,56 @@ class FilePanel(QWidget):
                 self.file_list.setItem(row, 3, time_item)
         
         except PermissionError:
-            QMessageBox.warning(self, "错误", "没有权限访问此目录")
+            # 静默跳过无权限目录，不弹对话框，行为类似 FreeCommander
+            # 保持当前路径不变，文件列表保持上一次可访问状态
+            return
         except Exception as e:
             QMessageBox.critical(self, "错误", f"加载目录失败: {str(e)}")
+    
+    def _sort_items(self, items):
+        """排序文件列表"""
+        # 目录优先
+        dirs = [item for item in items if item.get('is_dir', False) and item['name'] != '..']
+        files = [item for item in items if not item.get('is_dir', False)]
+        parent = [item for item in items if item.get('is_dir', False) and item['name'] == '..']
+        
+        # 对目录和文件分别排序
+        def sort_key(item):
+            if self.sort_by == 'name':
+                return item['name'].lower()
+            elif self.sort_by == 'size':
+                # 目录返回0，文件返回实际大小
+                if item.get('is_dir', False):
+                    return 0
+                try:
+                    return os.path.getsize(item['path'])
+                except:
+                    return 0
+            elif self.sort_by == 'date':
+                # 使用修改时间
+                try:
+                    return os.path.getmtime(item['path'])
+                except:
+                    return 0
+            elif self.sort_by == 'type':
+                # 按扩展名排序
+                if item.get('is_dir', False):
+                    return ('', item['name'].lower())
+                ext = os.path.splitext(item['name'])[1].lower()
+                return (ext, item['name'].lower())
+            return item['name'].lower()
+        
+        dirs.sort(key=sort_key, reverse=(self.sort_order == 'desc'))
+        files.sort(key=sort_key, reverse=(self.sort_order == 'desc'))
+        
+        # 合并：父目录 + 目录 + 文件
+        return parent + dirs + files
+    
+    def set_sort(self, sort_by, sort_order='asc'):
+        """设置排序方式"""
+        self.sort_by = sort_by
+        self.sort_order = sort_order
+        self.refresh()
     
     @staticmethod
     def format_size(size):
@@ -319,15 +376,41 @@ class FilePanel(QWidget):
     
     def on_item_double_clicked(self, item):
         """双击打开"""
-        row = item.row()
-        name = self.file_list.item(row, 0).text()
-        
-        if name == '..':
-            self.go_up()
-        else:
-            item_path = os.path.join(self.current_path, name)
-            if os.path.isdir(item_path):
-                self.change_path(item_path)
+        try:
+            if item is None:
+                return
+            
+            row = item.row()
+            name_item = self.file_list.item(row, 0)
+            if name_item is None:
+                return
+            
+            name = name_item.text()
+            if not name:
+                return
+            
+            if name == '..':
+                self.go_up()
+            else:
+                item_path = os.path.join(self.current_path, name)
+                if os.path.isdir(item_path):
+                    self.change_path(item_path)
+                elif os.path.isfile(item_path):
+                    # 双击文件时，使用系统默认程序打开
+                    try:
+                        if os.name == 'nt':  # Windows
+                            os.startfile(item_path)
+                        elif os.name == 'posix':  # Linux/macOS
+                            import subprocess
+                            subprocess.Popen(['xdg-open', item_path] if os.uname().sysname != 'Darwin' else ['open', item_path])
+                    except Exception as e:
+                        QMessageBox.warning(self, "错误", f"无法打开文件: {str(e)}")
+        except Exception as e:
+            # 捕获所有异常，防止程序崩溃
+            import traceback
+            print(f"双击事件处理错误: {e}")
+            print(traceback.format_exc())
+            QMessageBox.warning(self, "错误", f"处理双击事件时发生错误: {str(e)}")
     
     def on_path_changed(self):
         """路径改变"""
@@ -338,25 +421,56 @@ class FilePanel(QWidget):
             QMessageBox.warning(self, "错误", "路径不存在或无效")
             self.path_input.setText(self.current_path)
     
-    def change_path(self, path):
+    def change_path(self, path, add_to_history=True):
         """改变当前路径"""
         path = os.path.abspath(path)
         if os.path.isdir(path):
+            old_path = self.current_path
             self.current_path = path
+            
+            # 添加到历史记录
+            if add_to_history:
+                self.history.navigate_to(self.current_path)
+            
             if self.show_tree_flag:
                 try:
                     self.dir_tree.setRootIndex(self.dir_model.index(self.current_path))
                 except Exception:
                     pass
+            self.path_input.setText(self.current_path)
             self.refresh()
+            
+            # 通知主窗口更新标签标题
+            if self.on_path_changed_callback:
+                self.on_path_changed_callback(self)
         else:
             QMessageBox.warning(self, "错误", "路径无效")
+    
+    def set_path(self, path):
+        """设置路径（用于外部调用，会添加到历史）"""
+        self.change_path(path, add_to_history=True)
     
     def go_up(self):
         """返回上级目录"""
         parent = os.path.dirname(self.current_path)
         if parent != self.current_path:
             self.change_path(parent)
+    
+    def go_back(self):
+        """后退"""
+        path = self.history.go_back()
+        if path:
+            self.change_path(path, add_to_history=False)
+            return True
+        return False
+    
+    def go_forward(self):
+        """前进"""
+        path = self.history.go_forward()
+        if path:
+            self.change_path(path, add_to_history=False)
+            return True
+        return False
     
     def browse_folder(self):
         """浏览文件夹"""
@@ -502,27 +616,211 @@ class FilePanel(QWidget):
         """显示右键菜单"""
         menu = QMenu(self)
         
+        # 获取选中的项
+        selected_items = self.get_selected_items()
+        is_single_file = len(selected_items) == 1 and not os.path.isdir(selected_items[0][1])
+        is_multiple = len(selected_items) > 1
+        
+        # 预览（仅单个文件）
+        if is_single_file:
+            preview_action = menu.addAction("快速预览")
+            menu.addSeparator()
+        
         copy_action = menu.addAction("复制")
         move_action = menu.addAction("移动")
         delete_action = menu.addAction("删除")
         
         menu.addSeparator()
         
+        # 新建功能
+        new_folder_action = menu.addAction("新建文件夹")
+        new_file_action = menu.addAction("新建文件")
+        menu.addSeparator()
+        
+        # 压缩/解压
+        if is_multiple or (len(selected_items) == 1 and os.path.isdir(selected_items[0][1])):
+            compress_action = menu.addAction("压缩为ZIP...")
+            menu.addSeparator()
+        
+        # 解压（如果选中ZIP文件）
+        if len(selected_items) == 1:
+            file_path = selected_items[0][1]
+            if os.path.isfile(file_path) and file_path.lower().endswith('.zip'):
+                extract_action = menu.addAction("解压ZIP...")
+                menu.addSeparator()
+        
+        # 批量重命名（多个文件）
+        if is_multiple:
+            rename_action = menu.addAction("批量重命名")
+            menu.addSeparator()
+        
         refresh_action = menu.addAction("刷新")
+        
+        menu.addSeparator()
+        
+        # 排序菜单
+        sort_menu = menu.addMenu("排序方式")
+        sort_name_asc = sort_menu.addAction("按名称 (升序)")
+        sort_name_desc = sort_menu.addAction("按名称 (降序)")
+        sort_size_asc = sort_menu.addAction("按大小 (升序)")
+        sort_size_desc = sort_menu.addAction("按大小 (降序)")
+        sort_date_asc = sort_menu.addAction("按日期 (升序)")
+        sort_date_desc = sort_menu.addAction("按日期 (降序)")
+        sort_type_asc = sort_menu.addAction("按类型 (升序)")
+        sort_type_desc = sort_menu.addAction("按类型 (降序)")
+        
+        menu.addSeparator()
+        
         properties_action = menu.addAction("属性")
         
         action = menu.exec_(self.file_list.mapToGlobal(position))
         
-        if action == copy_action:
+        # 处理排序操作
+        if action == sort_name_asc:
+            self.set_sort('name', 'asc')
+        elif action == sort_name_desc:
+            self.set_sort('name', 'desc')
+        elif action == sort_size_asc:
+            self.set_sort('size', 'asc')
+        elif action == sort_size_desc:
+            self.set_sort('size', 'desc')
+        elif action == sort_date_asc:
+            self.set_sort('date', 'asc')
+        elif action == sort_date_desc:
+            self.set_sort('date', 'desc')
+        elif action == sort_type_asc:
+            self.set_sort('type', 'asc')
+        elif action == sort_type_desc:
+            self.set_sort('type', 'desc')
+        
+        if action == preview_action:
+            self.show_preview(selected_items[0][1])
+        elif action == copy_action:
             self.copy_to(self.current_path)
         elif action == move_action:
             self.move_to(self.current_path)
         elif action == delete_action:
             self.delete_files()
+        elif action == new_folder_action:
+            self.create_new_folder()
+        elif action == new_file_action:
+            self.create_new_file()
+        elif action == compress_action:
+            self.compress_files()
+        elif action == extract_action:
+            self.extract_archive(selected_items[0][1])
+        elif action == rename_action:
+            self.batch_rename()
         elif action == refresh_action:
             self.refresh()
         elif action == properties_action:
             self.show_properties()
+    
+    def show_preview(self, file_path):
+        """显示文件预览"""
+        # 通过父窗口获取预览面板
+        parent = self.parent()
+        while parent and not hasattr(parent, 'preview_panel'):
+            parent = parent.parent()
+        
+        if parent and hasattr(parent, 'preview_panel'):
+            parent.preview_panel.preview_file(file_path)
+            parent.preview_panel.show()
+        else:
+            QMessageBox.information(self, "提示", "预览功能未初始化")
+    
+    def batch_rename(self):
+        """批量重命名"""
+        from .rename_dialog import RenameDialog
+        
+        selected = self.get_selected_items()
+        if not selected:
+            QMessageBox.information(self, "提示", "请先选择要重命名的文件")
+            return
+        
+        dialog = RenameDialog(self, selected)
+        if dialog.exec_() == RenameDialog.Accepted:
+            self.refresh()
+    
+    def create_new_folder(self):
+        """新建文件夹"""
+        from PyQt5.QtWidgets import QInputDialog
+        
+        name, ok = QInputDialog.getText(
+            self,
+            "新建文件夹",
+            "请输入文件夹名称:",
+            text="新建文件夹"
+        )
+        
+        if ok and name:
+            new_path = os.path.join(self.current_path, name)
+            if os.path.exists(new_path):
+                QMessageBox.warning(self, "错误", "文件夹已存在")
+                return
+            
+            try:
+                os.makedirs(new_path)
+                self.refresh()
+                QMessageBox.information(self, "成功", f"文件夹已创建: {name}")
+            except Exception as e:
+                QMessageBox.critical(self, "错误", f"创建失败: {str(e)}")
+    
+    def create_new_file(self):
+        """新建文件"""
+        from PyQt5.QtWidgets import QInputDialog
+        
+        name, ok = QInputDialog.getText(
+            self,
+            "新建文件",
+            "请输入文件名:",
+            text="新建文件.txt"
+        )
+        
+        if ok and name:
+            new_path = os.path.join(self.current_path, name)
+            if os.path.exists(new_path):
+                QMessageBox.warning(self, "错误", "文件已存在")
+                return
+            
+            try:
+                with open(new_path, 'w', encoding='utf-8') as f:
+                    pass  # 创建空文件
+                self.refresh()
+                QMessageBox.information(self, "成功", f"文件已创建: {name}")
+            except Exception as e:
+                QMessageBox.critical(self, "错误", f"创建失败: {str(e)}")
+    
+    def compress_files(self):
+        """压缩文件"""
+        from .archive_dialog import ArchiveDialog
+        
+        selected = self.get_selected_items()
+        if not selected:
+            QMessageBox.information(self, "提示", "请先选择要压缩的文件或文件夹")
+            return
+        
+        file_paths = [path for _, path in selected]
+        
+        # 获取主窗口
+        parent = self.parent()
+        while parent and not hasattr(parent, 'preview_panel'):
+            parent = parent.parent()
+        
+        dialog = ArchiveDialog(parent, file_paths, operation='create')
+        dialog.exec_()
+    
+    def extract_archive(self, zip_path):
+        """解压文件"""
+        from .archive_dialog import ArchiveDialog
+        
+        # 获取主窗口
+        parent = self.parent()
+        while parent and not hasattr(parent, 'preview_panel'):
+            parent = parent.parent()
+        
+        dialog = ArchiveDialog(parent, [zip_path], operation='extract')
+        dialog.exec_()
     
     def show_properties(self):
         """显示文件属性"""

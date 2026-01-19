@@ -40,7 +40,27 @@ def create_menu_bar(main_window):
     
     edit_menu.addSeparator()
     
-    refresh_action = edit_menu.addAction("刷新(&R)")
+    new_folder_action = edit_menu.addAction("新建文件夹")
+    new_folder_action.setShortcut("Ctrl+Shift+N")
+    new_folder_action.triggered.connect(lambda: on_new_folder(main_window))
+    
+    new_file_action = edit_menu.addAction("新建文件")
+    new_file_action.setShortcut("Ctrl+N")
+    new_file_action.triggered.connect(lambda: on_new_file(main_window))
+    
+    edit_menu.addSeparator()
+    
+    undo_action = edit_menu.addAction("撤销(&U)")
+    undo_action.setShortcut(QKeySequence.Undo)
+    undo_action.triggered.connect(lambda: on_undo(main_window))
+    
+    redo_action = edit_menu.addAction("重做(&R)")
+    redo_action.setShortcut(QKeySequence.Redo)
+    redo_action.triggered.connect(lambda: on_redo(main_window))
+    
+    edit_menu.addSeparator()
+    
+    refresh_action = edit_menu.addAction("刷新")
     refresh_action.setShortcut(QKeySequence.Refresh)
     refresh_action.triggered.connect(main_window.refresh_panels)
     
@@ -51,10 +71,37 @@ def create_menu_bar(main_window):
     up_action.setShortcut("Backspace")
     up_action.triggered.connect(main_window.go_up)
     
+    back_action = view_menu.addAction("后退")
+    back_action.setShortcut("Alt+Left")
+    back_action.triggered.connect(main_window.go_back)
+    
+    forward_action = view_menu.addAction("前进")
+    forward_action.setShortcut("Alt+Right")
+    forward_action.triggered.connect(main_window.go_forward)
+    
+    view_menu.addSeparator()
+    
+    bookmark_action = view_menu.addAction("书签管理")
+    bookmark_action.setShortcut("Ctrl+B")
+    bookmark_action.triggered.connect(lambda: on_bookmarks(main_window))
+    
     view_menu.addSeparator()
     
     sync_action = view_menu.addAction("同步路径")
     sync_action.triggered.connect(main_window.sync_paths)
+    
+    view_menu.addSeparator()
+    
+    # 主题菜单
+    theme_menu = view_menu.addMenu("主题")
+    light_theme_action = theme_menu.addAction("浅色主题")
+    light_theme_action.triggered.connect(lambda: on_change_theme(main_window, 'light'))
+    
+    dark_theme_action = theme_menu.addAction("深色主题")
+    dark_theme_action.triggered.connect(lambda: on_change_theme(main_window, 'dark'))
+    
+    default_theme_action = theme_menu.addAction("默认主题")
+    default_theme_action.triggered.connect(lambda: on_change_theme(main_window, 'default'))
     
     # 工具菜单
     tools_menu = menubar.addMenu("工具(&T)")
@@ -66,6 +113,26 @@ def create_menu_bar(main_window):
     compare_action = tools_menu.addAction("对比文件")
     compare_action.setShortcut("Ctrl+Shift+C")
     compare_action.triggered.connect(lambda: on_compare_files(main_window))
+    
+    tools_menu.addSeparator()
+    
+    rename_action = tools_menu.addAction("批量重命名")
+    rename_action.setShortcut("Ctrl+M")
+    rename_action.triggered.connect(lambda: on_batch_rename(main_window))
+    
+    duplicate_action = tools_menu.addAction("查找重复文件")
+    duplicate_action.setShortcut("Ctrl+Shift+D")
+    duplicate_action.triggered.connect(lambda: on_find_duplicates(main_window))
+    
+    tools_menu.addSeparator()
+    
+    compress_action = tools_menu.addAction("压缩为ZIP...")
+    compress_action.setShortcut("Ctrl+Shift+Z")
+    compress_action.triggered.connect(lambda: on_compress(main_window))
+    
+    extract_action = tools_menu.addAction("解压ZIP...")
+    extract_action.setShortcut("Ctrl+Shift+X")
+    extract_action.triggered.connect(lambda: on_extract(main_window))
     
     tools_menu.addSeparator()
     
@@ -167,6 +234,148 @@ def on_settings(main_window):
     )
 
 
+def on_batch_rename(main_window):
+    """批量重命名"""
+    from .rename_dialog import RenameDialog
+    
+    focused = main_window.get_focused_panel()
+    if not focused:
+        QMessageBox.information(main_window, "提示", "请先选择一个文件面板")
+        return
+    
+    selected = focused.get_selected_items()
+    if not selected:
+        QMessageBox.information(main_window, "提示", "请先选择要重命名的文件")
+        return
+    
+    dialog = RenameDialog(main_window, selected)
+    if dialog.exec_() == RenameDialog.Accepted:
+        focused.refresh()
+
+
+def on_find_duplicates(main_window):
+    """查找重复文件"""
+    from .duplicate_finder_dialog import DuplicateFinderDialog
+    
+    dialog = DuplicateFinderDialog(main_window)
+    dialog.exec_()
+
+
+def on_bookmarks(main_window):
+    """书签管理"""
+    from .bookmark_manager import BookmarkDialog
+    
+    focused = main_window.get_focused_panel()
+    current_path = focused.current_path if focused else None
+    
+    dialog = BookmarkDialog(main_window, current_path)
+    dialog.exec_()
+
+
+def on_new_folder(main_window):
+    """新建文件夹"""
+    focused = main_window.get_focused_panel()
+    if focused:
+        focused.create_new_folder()
+
+
+def on_new_file(main_window):
+    """新建文件"""
+    focused = main_window.get_focused_panel()
+    if focused:
+        focused.create_new_file()
+
+
+def on_compress(main_window):
+    """压缩文件"""
+    from .archive_dialog import ArchiveDialog
+    
+    focused = main_window.get_focused_panel()
+    if not focused:
+        QMessageBox.information(main_window, "提示", "请先选择一个文件面板")
+        return
+    
+    selected = focused.get_selected_items()
+    if not selected:
+        QMessageBox.information(main_window, "提示", "请先选择要压缩的文件或文件夹")
+        return
+    
+    file_paths = [path for _, path in selected]
+    dialog = ArchiveDialog(main_window, file_paths, operation='create')
+    dialog.exec_()
+
+
+def on_extract(main_window):
+    """解压文件"""
+    from .archive_dialog import ArchiveDialog
+    
+    focused = main_window.get_focused_panel()
+    if not focused:
+        QMessageBox.information(main_window, "提示", "请先选择一个文件面板")
+        return
+    
+    selected = focused.get_selected_items()
+    if not selected:
+        # 如果没有选中，弹出文件选择对话框
+        from PyQt5.QtWidgets import QFileDialog
+        zip_path, _ = QFileDialog.getOpenFileName(
+            main_window,
+            "选择ZIP文件",
+            focused.current_path if focused else "",
+            "ZIP文件 (*.zip)"
+        )
+        if zip_path:
+            dialog = ArchiveDialog(main_window, [zip_path], operation='extract')
+            dialog.exec_()
+    else:
+        # 检查选中的是否为ZIP文件
+        zip_files = [path for _, path in selected if path.lower().endswith('.zip')]
+        if zip_files:
+            dialog = ArchiveDialog(main_window, zip_files, operation='extract')
+            dialog.exec_()
+        else:
+            QMessageBox.warning(main_window, "提示", "请选择ZIP文件")
+
+
+def on_undo(main_window):
+    """撤销操作"""
+    focused = main_window.get_focused_panel()
+    if focused and hasattr(focused, 'undo_manager'):
+        success, message = focused.undo_manager.undo()
+        if success:
+            focused.refresh()
+            QMessageBox.information(main_window, "撤销", message)
+        else:
+            QMessageBox.warning(main_window, "撤销失败", message)
+
+
+def on_redo(main_window):
+    """重做操作"""
+    focused = main_window.get_focused_panel()
+    if focused and hasattr(focused, 'undo_manager'):
+        success, message = focused.undo_manager.redo()
+        if success:
+            focused.refresh()
+            QMessageBox.information(main_window, "重做", message)
+        else:
+            QMessageBox.warning(main_window, "重做失败", message)
+
+
+def on_change_theme(main_window, theme_name):
+    """切换主题"""
+    from .theme_manager import ThemeManager
+    
+    # 应用主题
+    styles = ThemeManager.get_theme(theme_name)
+    main_window.setStyleSheet(styles['main_window'])
+    
+    # 保存主题配置
+    main_window.config.set('theme', theme_name)
+    main_window.config.save_config(main_window.config.config)
+    
+    QMessageBox.information(main_window, "主题", f"已切换到{ThemeManager.THEMES[theme_name]['name']}")
+
+
 def on_about(main_window):
     """关于"""
     QMessageBox.about(
@@ -181,6 +390,9 @@ def on_about(main_window):
         "• 快速导航\n"
         "• 文件属性查看\n"
         "• 文件搜索\n"
+        "• 批量重命名\n"
+        "• 重复文件查找\n"
+        "• 快速预览\n"
         "• 配置自动保存\n\n"
         "© 2026 All Rights Reserved"
     )
