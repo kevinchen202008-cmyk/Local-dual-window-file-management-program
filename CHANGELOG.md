@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - INSTALL_GUIDE.md - Installation and setup instructions
 - USAGE_GUIDE.md - Detailed user guide
 - QUICK_REFERENCE.md - Keyboard shortcuts and tips
-- GETTING_STARTED.md - Quick start guide
+- QUICK_START.md - Quick start guide
 - PROJECT_SUMMARY.md - Technical details
 - GIT_WORKFLOW.md - Git workflow guide
 - OPTIMIZATION_PLAN.md - Roadmap for future improvements
@@ -44,6 +44,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive error handling
 - Performance optimized for typical use cases
 - Clean, well-documented code
+
+---
+
+## [1.0.2.1] - 2026-01-12
+
+### Fixed
+- Fixed empty dialog issue when no same-named files exist
+- Fixed inability to compare files with different names
+- Added manual file selection mode (Mode 3) for comparing any two files
+
+## [1.0.2] - 2026-01-12
+
+### Added
+- File comparison feature with multiple modes
+- CompareSelectDialog for intelligent mode selection
+- BatchCompareDialog for batch comparison results
+- Comparison report export functionality
+- Statistics and categorization for comparison results
+
+### Enhanced
+- File comparison now supports 3 modes:
+  - Mode 1: Compare two specified files
+  - Mode 2: Select from same-named files list
+  - Mode 3: Manually select any two files
+- Improved menu integration for file comparison
+- Better error handling and user feedback
+- Improved UI responsiveness for large file lists
+
+### Documentation
+- Added FILE_COMPARE_GUIDE.md
+- Added FILE_COMPARE_GUIDE.md (includes quick start guide)
+- Updated user documentation
+
+## [1.0.1] - 2026-01-12
+
+### Added
+- Initial file comparison functionality
+- Basic dual-file comparison dialog
+
+## [1.0.0] - 2026-01-11
+
+### Changed
+- Upgraded Python version requirement to 3.13.9 (recommended) or 3.10+
+- Upgraded PyQt5 to 5.15.11
+- Upgraded pip to 25.3
+
+### UI Improvements
+- Modernized focus panel highlighting with light blue background instead of blue border
+- Improved visual consistency across all UI elements
+- Unified title bar and menu bar layout
+- Standardized button sizes and fonts to match menu bar
+
+---
+
+## [1.0.1] - 2026-01-12
+
+### Added
+- Initial file comparison functionality
+- Basic dual-file comparison dialog
 
 ---
 

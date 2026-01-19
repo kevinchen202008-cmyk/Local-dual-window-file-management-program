@@ -37,7 +37,7 @@
 ✅ PROJECT_SUMMARY.md               # 项目技术总结
 ✅ CHECKLIST.md                     # 项目检查清单
 ✅ DELIVERY_NOTES.md                # 交付说明文档
-✅ FINAL_SUMMARY.md                 # 项目完成总结
+✅ PROJECT_SUMMARY.md               # 项目技术总结
 ✅ INDEX.md                         # 文档索引（本文件）
 ```
 
@@ -108,7 +108,7 @@
 │  └─ DELIVERY_NOTES.md    # 交付说明
 │
 └─ 审视级
-   ├─ FINAL_SUMMARY.md     # 项目总结
+   ├─ PROJECT_SUMMARY.md   # 项目总结
    └─ INDEX.md             # 文档索引
 ```
 
@@ -199,7 +199,7 @@
 | 学习操作 | [USAGE_GUIDE.md](USAGE_GUIDE.md) |
 | 查快捷键 | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) |
 | 解决问题 | [INSTALL_GUIDE.md - 故障排除](INSTALL_GUIDE.md#故障排除) |
-| 了解项目 | [FINAL_SUMMARY.md](FINAL_SUMMARY.md) |
+| 了解项目 | [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) |
 
 ### 文档导航
 - 📚 [完整文档索引](INDEX.md)

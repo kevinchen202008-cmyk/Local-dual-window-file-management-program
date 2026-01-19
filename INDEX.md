@@ -55,7 +55,7 @@
    - 使用建议
 
 ### 项目总结（阅读完整）
-1. **[FINAL_SUMMARY.md](FINAL_SUMMARY.md)** - 项目完成总结
+1. **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - 项目技术总结
    - 项目成就
    - 完整功能列表
    - 文件结构
@@ -112,7 +112,7 @@
 - 3. 质量保证检查
 
 #### 获得项目总体认识
-→ 打开 [FINAL_SUMMARY.md](FINAL_SUMMARY.md)
+→ 打开 [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)
 - 1. 项目规模和成就
 - 2. 完整功能列表
 - 3. 技术要点
@@ -196,7 +196,7 @@
 - 获取帮助指南
 ```
 
-### FINAL_SUMMARY.md
+### PROJECT_SUMMARY.md
 ```
 项目总结文档，包含：
 - 项目成就和规模
@@ -246,7 +246,7 @@ README.md (项目总览)
     └── PROJECT_SUMMARY.md (技术细节)
         ├── CHECKLIST.md (验证清单)
         ├── DELIVERY_NOTES.md (交付说明)
-        └── FINAL_SUMMARY.md (项目总结)
+        └── PROJECT_SUMMARY.md (项目总结)
 ```
 
 ## ⏱️ 推荐阅读时间
@@ -260,7 +260,7 @@ README.md (项目总览)
 | PROJECT_SUMMARY.md | 20 分钟 | 开发者 |
 | CHECKLIST.md | 10 分钟 | 维护者 |
 | DELIVERY_NOTES.md | 15 分钟 | 部署者 |
-| FINAL_SUMMARY.md | 10 分钟 | 项目评审 |
+| PROJECT_SUMMARY.md | 10 分钟 | 项目评审 |
 
 ## 🎯 速查导航
 
@@ -275,7 +275,7 @@ README.md (项目总览)
 | 了解功能 | README.md | 功能概览 |
 | 技术细节 | PROJECT_SUMMARY.md | 完成清单 |
 | 部署程序 | DELIVERY_NOTES.md | 部署步骤 |
-| 项目总结 | FINAL_SUMMARY.md | 完成总结 |
+| 项目总结 | PROJECT_SUMMARY.md | 完成总结 |
 
 ## 📞 快速链接
 
@@ -286,7 +286,7 @@ README.md (项目总览)
 - **技术细节**: [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)
 - **验证清单**: [CHECKLIST.md](CHECKLIST.md)
 - **交付说明**: [DELIVERY_NOTES.md](DELIVERY_NOTES.md)
-- **项目总结**: [FINAL_SUMMARY.md](FINAL_SUMMARY.md)
+- **项目总结**: [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)
 
 ---
 
